@@ -1,0 +1,111 @@
+{
+  "name": "pyapi Beatport Top 100",
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "0 * * * *"
+      },
+      "id": "Cron1",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "http://python-svc:8000/beatport/top100",
+        "jsonParameters": true,
+        "options": {},
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "genre",
+              "value": "hard-techno"
+            },
+            {
+              "name": "limit",
+              "value": 20
+            }
+          ]
+        }
+      },
+      "id": "HTTPReq",
+      "name": "Fetch Top 100",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Map HTTP response (JSON array) to individual track items\nconst arr = items[0].json;\nconst out = [];\nfor (const e of arr) {\n  out.push({ json: { title: e.title, artist: e.artist, bpm: e.bpm, source: e.source }});\n}\nreturn out;"
+      },
+      "id": "Function1",
+      "name": "To Tracks",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://python-svc:8000/tracks",
+        "jsonParameters": true,
+        "options": {},
+        "jsonBody": "={{$json}}"
+      },
+      "id": "HTTPReq2",
+      "name": "Store Track",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1060,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Fetch Top 100",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Top 100": {
+      "main": [
+        [
+          {
+            "node": "To Tracks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To Tracks": {
+      "main": [
+        [
+          {
+            "node": "Store Track",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

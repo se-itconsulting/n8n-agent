@@ -1,0 +1,74 @@
+{
+  "name": "Rating Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rating",
+        "responseMode": "lastNode"
+      },
+      "id": "Webhook1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = items[0].json.body ?? items[0].json;\nconst payload = { track_id: Number(body.track_id), rating: Number(body.rating), user_name: body.user_name, comment: body.comment };\nreturn [{ json: payload }];"
+      },
+      "id": "Function1",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://python-svc:8000/ratings",
+        "jsonParameters": true,
+        "options": {},
+        "jsonBody": "={{$json}}"
+      },
+      "id": "HTTPReq1",
+      "name": "Create Rating",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        820,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Create Rating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

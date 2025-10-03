@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+
+# Node / n8n
+node_modules/
+.home/
+
+# Docker
+*.log
+.docker/
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
