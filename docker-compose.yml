@@ -1,73 +1,76 @@
 version: "3.8"
 
 services:
+  # --- Database (Postgres) ---
   db:
     image: postgres:16
     container_name: n8n-agent-db
     environment:
-      POSTGRES_USER: n8n
-      POSTGRES_PASSWORD: n8n
-      POSTGRES_DB: n8n
+      POSTGRES_USER: ${POSTGRES_USER:-n8n}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-n8n}
+      POSTGRES_DB: ${POSTGRES_DB:-n8n}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U n8n -d n8n"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-n8n} -d ${POSTGRES_DB:-n8n}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # einmaliges Schema-Init (führt sql/schema.sql aus)
   db-init:
     image: postgres:16
     container_name: n8n-agent-db-init
     environment:
-      PGPASSWORD: n8n
+      PGPASSWORD: ${POSTGRES_PASSWORD:-n8n}
     volumes:
       - ./sql:/sql:ro
     depends_on:
       db:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "psql -h db -U n8n -d n8n -f /sql/schema.sql || true"]
+    entrypoint: ["sh", "-c", "psql -h db -U ${POSTGRES_USER:-n8n} -d ${POSTGRES_DB:-n8n} -f /sql/schema.sql || true"]
     restart: "no"
 
+  # --- n8n (orchestrator) ---
   n8n:
     image: n8nio/n8n:latest
-    container_name: n8n-agent-n8n
+    container_name: n8n
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "5678:5678"
     environment:
-      - N8N_PORT=5678
-      - N8N_HOST=localhost
-      - N8N_PROTOCOL=http
+      # Editor / Auth
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-supersecret}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-PLEASE_CHANGE_ME}
+      - TZ=${TZ:-Europe/Berlin}
+      # DB (Postgres)
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=db
       - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=n8n
-      - DB_POSTGRESDB_USER=n8n
-      - DB_POSTGRESDB_PASSWORD=n8n
-      - GENERIC_TIMEZONE=Europe/Berlin
-      - N8N_SECURE_COOKIE=false
-      - NODE_ENV=production
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-n8n}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-n8n}
+      # Basis-URL (für Webhooks/Tunnel – bei IP/Traefik später anpassen)
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost/}
     volumes:
       - n8n_data:/home/node/.n8n
-    depends_on:
-      db:
-        condition: service_healthy
+    restart: unless-stopped
 
-  python-svc:
-    build:
-      context: ./python-svc
-    container_name: n8n-agent-python-svc
-    environment:
-      - PORT=8000
-      - DATABASE_URL=postgresql+psycopg2://n8n:n8n@db:5432/n8n
-    ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+  # --- Python FastAPI Service ---
+  pyapi:
+    build: ./python-svc
+    container_name: pyapi
+    expose:
+      - "8000"   # nur im Compose-Netzwerk sichtbar
+    restart: unless-stopped
 
 volumes:
-  n8n_data:
   db_data:
+  n8n_data:

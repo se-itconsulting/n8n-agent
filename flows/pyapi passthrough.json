@@ -1,0 +1,56 @@
+{
+  "name": "pyapi passthrough (POST /pyapi-exec)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pyapi-exec",
+        "responseMode": "lastNode",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "name": "Webhook (POST /pyapi-exec)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -350,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://pyapi:8000/execute",
+        "sendBody": true,
+        "jsonParameters": true,
+        "bodyParametersJson": "={{$json}}",
+        "responseFormat": "json",
+        "options": {
+          "timeout": 20
+        }
+      },
+      "name": "HTTP → pyapi /execute",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        224,
+        -464
+      ],
+      "id": "cd7bd3db-0bdc-4229-8671-31ff4c492bb2"
+    }
+  ],
+  "connections": {
+    "Webhook (POST /pyapi-exec)": {
+      "main": [
+        [
+          {
+            "node": "HTTP → pyapi /execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

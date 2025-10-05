@@ -1,31 +1,29 @@
--- Schema for n8n-agent
-
 CREATE TABLE IF NOT EXISTS gen_tracks (
   id SERIAL PRIMARY KEY,
-  title TEXT NOT NULL,
-  artist TEXT NOT NULL,
-  bpm REAL,
-  source TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_gen_tracks_source ON gen_tracks(source);
-
-CREATE TABLE IF NOT EXISTS stems (
-  id SERIAL PRIMARY KEY,
-  track_id INTEGER NOT NULL REFERENCES gen_tracks(id) ON DELETE CASCADE,
-  type TEXT NOT NULL, -- drum, bass, lead, vox, etc
-  url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT now(),
+  bucket TEXT,
+  prompt_id TEXT,
+  prompt_text TEXT,
+  bpm INT,
+  url_wav TEXT,
+  url_stems_zip TEXT,
+  lufs REAL,
+  score_auto REAL
 );
 
 CREATE TABLE IF NOT EXISTS ratings (
   id SERIAL PRIMARY KEY,
-  track_id INTEGER NOT NULL REFERENCES gen_tracks(id) ON DELETE CASCADE,
-  rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
-  user_name TEXT,
-  comment TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  gen_track_id INT REFERENCES gen_tracks(id) ON DELETE CASCADE,
+  rating INT CHECK (rating IN (-1,0,1)),
+  created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_ratings_track_id ON ratings(track_id);
+CREATE TABLE IF NOT EXISTS prompt_bank (
+  id TEXT PRIMARY KEY,
+  bucket TEXT,
+  prompt_text TEXT,
+  weight REAL DEFAULT 1.0,
+  wins INT DEFAULT 0,
+  losses INT DEFAULT 0,
+  last_score REAL DEFAULT 0.0
+);
